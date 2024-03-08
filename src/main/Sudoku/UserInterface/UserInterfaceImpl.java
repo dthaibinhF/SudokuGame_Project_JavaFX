@@ -1,20 +1,26 @@
 package UserInterface;
 
+import Constant.GameState;
 import ProblemDomain.Coordinates;
 import ProblemDomain.SudokuGame;
 import javafx.event.EventHandler;
 import javafx.geometry.Pos;
 import javafx.scene.Group;
+import javafx.scene.Scene;
+import javafx.scene.control.Alert;
+import javafx.scene.control.ButtonType;
+import javafx.scene.control.TextField;
+import javafx.scene.input.KeyCode;
 import javafx.scene.input.KeyEvent;
 import javafx.scene.layout.Background;
 import javafx.scene.paint.Color;
 import javafx.scene.shape.Rectangle;
 import javafx.scene.text.Font;
+import javafx.scene.text.Text;
 import javafx.stage.Stage;
 
+import java.awt.*;
 import java.util.HashMap;
-
-import static javax.sound.sampled.AudioSystem.getLine;
 
 public class UserInterfaceImpl implements IUserInterfaceContract.View,
         EventHandler<KeyEvent> {
@@ -106,8 +112,8 @@ public class UserInterfaceImpl implements IUserInterfaceContract.View,
         //O(n^2) runtime Complexity
         for (int xIndex = 0; xIndex < 9; xIndex++) {
             for (int yIndex = 0; yIndex < 9; yIndex++) {
-                int x = xOrigin + xIndex*xAndYDelta;
-                int y = yOrigin + yIndex*xAndYDelta;
+                int x = xOrigin + xIndex * xAndYDelta;
+                int y = yOrigin + yIndex * xAndYDelta;
 
                 SudokuTextField tile = new SudokuTextField(xIndex, yIndex);
 
@@ -139,15 +145,29 @@ public class UserInterfaceImpl implements IUserInterfaceContract.View,
     }
 
     private void drawSudokuBoard(Group root) {
+        Rectangle boardbackground = new Rectangle();
+        boardbackground.setX(BOARD_PADDING);
+        boardbackground.setY(BOARD_PADDING);
+        boardbackground.setWidth(BOARD_X_AND_Y);
+        boardbackground.setHeight(BOARD_X_AND_Y);
 
+        boardbackground.setFill(BOARD_BACKGROUND_COLOR);
+
+        root.getChildren().add(boardbackground);
     }
 
     private void drawTitle(Group root) {
-
+        Text title = new Text(235, 690, SUDOKU);
+        title.setFill(Color.WHITE);
+        Font titleFont = new Font(43);
+        title.setFont(titleFont);
+        root.getChildren().add(title);
     }
 
     private void drawBackground(Group root) {
-
+        Scene scene = new Scene(root, WINDOW_X, WINDOW_Y);
+        scene.setFill(WINDOW_BACKGROUND_COLOR);
+        stage.setScene(scene);
     }
 
     @Override
@@ -157,26 +177,78 @@ public class UserInterfaceImpl implements IUserInterfaceContract.View,
 
     @Override
     public void updateSquare(int x, int y, int input) {
+        SudokuTextField tile = textFieldCoordinates.get(new Coordinates(x, y));
+
+        String value = Integer.toString(
+                input
+        );
+
+        if (value.equals("0")) value = "";
+
+        tile.textProperty().setValue(value);
 
     }
 
     @Override
     public void updateBoard(SudokuGame sudokuGame) {
+        for (int xIndex = 0; xIndex < 9; xIndex++) {
+            for (int yIndex = 0; yIndex < 9; yIndex++) {
+                TextField tile = textFieldCoordinates.get(new Coordinates(xIndex, yIndex));
 
+                String value = Integer.toString(
+                        sudokuGame.getCopyOFGridState()[xIndex][yIndex]
+                );
+
+                if (value.equals("0")) value = "";
+                tile.setText(value);
+
+                if (sudokuGame.getGameState() == GameState.NEW) {
+                    if (value.equals("")) {
+                        tile.setStyle("-fx-opacity: 1;");
+                        tile.setDisable(false);
+                    } else {
+                        tile.setStyle("-fx-opacity: 0.8;");
+                        tile.setDisable(true);
+                    }
+                }
+            }
+        }
     }
 
     @Override
     public void showDialog(String message) {
+        Alert dialog = new Alert(Alert.AlertType.CONFIRMATION, message, ButtonType.OK);
+        dialog.showAndWait();
 
+        if (dialog.getResult() == ButtonType.OK) listener.onDialogClick();
     }
 
     @Override
     public void showError(String message) {
-
+        Alert dialog = new Alert(Alert.AlertType.ERROR, message, ButtonType.OK);
+        dialog.showAndWait();
     }
 
     @Override
-    public void handle(KeyEvent keyEvent) {
+    public void handle(KeyEvent event) {
+        if (event.getEventType() == KeyEvent.KEY_PRESSED) {
+            if (event.getText().matches("[0-9]")) {
+                int value = Integer.parseInt(event.getText());
+                handleInput(value, event.getSource());
+            } else if (event.getCode() == KeyCode.BACK_SPACE) {
+                handleInput(0, event.getSource());
+            } else {
+                ((TextField) event.getSource()).setText("");
+            }
+        }
+        event.consume();
+    }
 
+    private void handleInput(int value, Object source) {
+        listener.onSudokuInput(
+                ((SudokuTextField) source).getX(),
+                ((SudokuTextField) source).getY(),
+                value
+        );
     }
 }
